@@ -9,11 +9,11 @@ def node_to_beam_idx(m, p):
     # Obviously, when len(p) should is more than m, the output is too rough to distinguish
     n = np.power(2, m)
     l = len(p)
-    a = np.arange(l)+1
-    x_l = np.dot(np.array(p), np.power(1/2, a))
-    x_h = x_l+np.power(1/2, l)
-    x_a = (x_l+x_h)/2
-    [beam_l, beam_a, beam_h] = np.mod(np.round(np.array([x_l, x_a, x_h])*n), n)
+    a = np.arange(l) + 1
+    x_l = np.dot(np.array(p), np.power(1 / 2, a))
+    x_h = x_l + np.power(1 / 2, l)
+    x_a = (x_l + x_h) / 2
+    [beam_l, beam_a, beam_h] = np.mod(np.round(np.array([x_l, x_a, x_h]) * n), n)
     return beam_l, beam_a, beam_h
 
 
@@ -22,7 +22,7 @@ def beam_gain_map(gain):
     # I think that the rss isn't able to be more than -40dbm, and the lower limit may be set as -90 or -100 in this code
     upper_limit = -40
     lower_limit = -100
-    r = (gain-lower_limit)/(upper_limit-lower_limit)
+    r = (gain - lower_limit) / (upper_limit - lower_limit)
     if r < 0:
         r = 0
     if r > 1:
@@ -48,16 +48,33 @@ class Node:
 
     def tree_p_reward_update(self, r):
         # Attributes update in P tree
-        self.N = self.N+1
-        self.R = ((self.N-1)*self.R+r)/self.N
+        self.N = self.N + 1
+        self.R = ((self.N - 1) * self.R + r) / self.N
 
     def tree_t_estimated_reward_update(self, t):
         # Attributes update in T tree
         if self.N == 0:
             self.E = np.inf
         else:
-            self.E = \
-                self.R+np.sqrt(2*np.power(self.sigma, 2)*np.log(t) / self.N)+self.rho1*np.power(self.gama, self.depth)
+            # choose=1,2,3 stand for origin HBA, adjusted HBA and origin HOO
+            choose = 3
+            if choose == 1:
+                # there is difference between HBA and HOO
+                # origin HBA
+                self.E = self.R + np.sqrt(2 * np.power(self.sigma, 2) * np.log(t) / self.N) \
+                    + self.rho1 * np.power(self.gama, self.depth)
+            if choose == 2:
+                # adjusted HBA: the parameter sigma is divided by 60, because the sigma(dbm) is the variance of shadow
+                # fading. The RSS is mapped to [0, 1], then the sigma maybe also zoomed out the same size,
+                # which is -40+100
+                self.E = self.R + np.sqrt(2 * np.power(self.sigma / 60, 2) * np.log(t) / self.N) \
+                    + self.rho1 * np.power(self.gama, self.depth)
+            if choose == 3:
+                # HOO: as the paper shows, the HOO algorithm set a /eta_h as 0.1, the parameter c_1 is equal to rho1
+                self.E = self.R + 0.1 * np.sqrt(2 * np.log(t) / self.N) \
+                    + self.rho1 * np.power(self.gama, self.depth)
+
+                # when use the adjust HBA, a better performance than HOO should be gotten
 
     def postorder_e(self, t):  # update E value of t tree in the postorder
         if self.left_child is not None:
@@ -121,21 +138,21 @@ def main():
                     continue
             if (node.left_child is None) and (node.right_child is None):
                 if np.random.rand() >= 0.5:
-                    node.left_child = Node(node.depth+1)
+                    node.left_child = Node(node.depth + 1)
                     node = node.left_child
                     p.append(0)
                 else:
-                    node.right_child = Node(node.depth+1)
+                    node.right_child = Node(node.depth + 1)
                     node = node.right_child
                     p.append(1)
                 break
             if (node.left_child is None) and (node.right_child is not None):
-                node.left_child = Node(node.depth+1)
+                node.left_child = Node(node.depth + 1)
                 node = node.left_child
                 p.append(0)
                 break
             if (node.left_child is not None) and (node.right_child is None):
-                node.right_child = Node(node.depth+1)
+                node.right_child = Node(node.depth + 1)
                 node = node.right_child
                 p.append(1)
                 break
@@ -144,7 +161,8 @@ def main():
         beam_idx_start, beam_idx_medium, beam_idx_end = node_to_beam_idx(m, p)
         # beam_measured_idx = np.floor((beam_idx_start+beam_idx_end)/2)
         beam_measured_idx = beam_idx_medium
-        array_shift = 1 / np.sqrt(n) * np.exp(1j * np.pi * (2*beam_measured_idx / k-1) * np.arange(n).reshape(-1, 1))
+        array_shift = 1 / np.sqrt(n) * np.exp(
+            1j * np.pi * (2 * beam_measured_idx / k - 1) * np.arange(n).reshape(-1, 1))
         noisy_rss, mean_rss = channel_rss(array_shift, angle)
         print('measured beam idx:', beam_measured_idx)
         print('measured beam RSS:', noisy_rss)
@@ -184,6 +202,7 @@ def main():
         plt.plot(best_beam_index, -40 * np.ones_like(best_beam_index), 'ro')
         plt.grid()
         plt.show()
+
 
 if __name__ == '__main__':
     main()
