@@ -168,6 +168,9 @@ def main():
         print('measured beam RSS:', noisy_rss)
         r = beam_gain_map(noisy_rss)
         if node.depth >= m:
+            # When the depth is achieve m, then break the iteration. However, the final leaf node in m depth is also
+            # random selected from the node in m-1 depth, so the result beam maybe difference from the best beam in one
+            # beam index
             break
         node = head_node
         if noisy_rss > -45:
