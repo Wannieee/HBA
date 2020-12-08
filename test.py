@@ -19,8 +19,9 @@ def node_to_beam_idx(m, p):
 
 def beam_gain_map(gain):
     # the limit set is flexible
+    # I think that the rss isn't able to be more than -40dbm, and the lower limit may be set as -90 or -100 in this code
     upper_limit = -40
-    lower_limit = -90
+    lower_limit = -100
     r = (gain-lower_limit)/(upper_limit-lower_limit)
     if r < 0:
         r = 0
