@@ -13,7 +13,7 @@ def node_to_beam_idx(m, p):
     x_l = np.dot(np.array(p), np.power(1 / 2, a))
     x_h = x_l + np.power(1 / 2, l)
     x_a = (x_l + x_h) / 2
-    [beam_l, beam_a, beam_h] = np.mod(np.round(np.array([x_l, x_a, x_h]) * n), n)
+    [beam_l, beam_a, beam_h] = np.mod(np.round(np.array([x_l, x_a, x_h]) * n), n).astype(np.int)
     return beam_l, beam_a, beam_h
 
 
@@ -57,7 +57,7 @@ class Node:
             self.E = np.inf
         else:
             # choose=1,2,3 stand for origin HBA, adjusted HBA and origin HOO
-            choose = 3
+            choose = 2
             if choose == 1:
                 # there is difference between HBA and HOO
                 # origin HBA
@@ -159,12 +159,13 @@ def main():
         # terminate the iteration
         # then attributes update
         beam_idx_start, beam_idx_medium, beam_idx_end = node_to_beam_idx(m, p)
+        print('p:', p, '\tidx:from', beam_idx_start, 'to', beam_idx_end)
         # beam_measured_idx = np.floor((beam_idx_start+beam_idx_end)/2)
         beam_measured_idx = beam_idx_medium
         array_shift = 1 / np.sqrt(n) * np.exp(
             1j * np.pi * (2 * beam_measured_idx / k - 1) * np.arange(n).reshape(-1, 1))
         noisy_rss, mean_rss = channel_rss(array_shift, angle)
-        print('measured beam idx:', beam_measured_idx)
+        print('measured beam idx:', '\033[7m', beam_measured_idx, '\033[0m',)
         print('measured beam RSS:', noisy_rss)
         r = beam_gain_map(noisy_rss)
         if node.depth >= m:
@@ -189,11 +190,11 @@ def main():
     print('\nTerminating the iteration\n------------------------------------')
     print('converge time: ', t)
     print('the HBA result of beam idx: between', beam_idx_start, 'and', beam_idx_end)
-    print('the best beam idx:', best_beam_index)
+    print('the best beam idx:', '\033[7m', best_beam_index, '\033[0m')
     # if want to see the RSS function over beam space, then set test = 1
     test = 1
     if test == 1:
-        print('test channel_rss:')
+        print('\n------------------------------------\ntest the channel rss: shown in the figure')
         array_shift = \
             1 / np.sqrt(n) * \
             np.exp(1j * np.pi * np.dot(np.arange(n).reshape(-1, 1), 2 * np.arange(k).reshape(1, -1) / k - 1))
