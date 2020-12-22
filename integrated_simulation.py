@@ -19,10 +19,10 @@ def simulation(m, n, k, angle, method):
         best_beam_index = np.mod(np.round(k * (1 - np.cos(angle)) / 2, 0), k).astype(np.int).T[0][0]
         best_array_shift = 1 / np.sqrt(n) * \
             np.exp(1j * np.pi * (2 * best_beam_index / k - 1) * np.arange(n).reshape(-1, 1))
-        _, optimal_rss = channel_rss(best_array_shift, angle)
+        _, optimal_rss = channel_rss(best_array_shift, angle, 0)
         optimal_reward = beam_gain_map(optimal_rss)
         head_node = Node(0)
-        for t in range(1, terminal_time+1):
+        for t in range(1, terminal_time+1):  # from 1 to terminal_time
             # if break
             p = []  # start from head_node, left_child is 0, right_child is 1
             node = head_node
@@ -119,6 +119,13 @@ def simulation(m, n, k, angle, method):
         # print('select', selected_beam_idx)
         # print('-------------')
         # calculate the cumulative regret
+        array_shift = 1 / np.sqrt(n) * np.exp(
+            1j * np.pi * (2 * selected_beam_idx / k - 1) * np.arange(n).reshape(-1, 1))
+        if converge_time < terminal_time:
+            for t in range(converge_time, terminal_time):
+                new_rss, _ = channel_rss(array_shift, angle)
+                measured_beam.append(selected_beam_idx)
+                measured_rss = np.append(measured_rss, new_rss)
         length = len(measured_rss)
         for r in measured_rss:
             measured_reward = np.append(measured_reward, beam_gain_map(r))
@@ -142,6 +149,7 @@ def main():
     l = 3
     angle = np.pi * np.random.rand(l, 1)
     best_beam_index = np.mod(np.round(k * (1 - np.cos(angle)) / 2, 0), k).astype(np.int).T
+    print('\033[7mTheoretical optimal result\033[0m')
     print('best_beam_index: ', best_beam_index[0])
     best_array_shift = 1 / np.sqrt(n) * \
         np.exp(1j * np.pi * (2 * best_beam_index / k - 1) * np.arange(n).reshape(-1, 1))
@@ -152,10 +160,12 @@ def main():
         = simulation(m, n, k, angle, method)
     print('\033[7mThe result of HBA:\033[0m')
     print('selected beam: ', selected_beam_idx)
+    print('terminal time:', terminal_time)
     print('converge time: ', converge_time)
     print('measured_beam: ', measured_beam)
     print('measured_rss: ', measured_rss)
     print('regret_record: ', regret_record)
+    print(len(regret_record))
     test = 1
     if test == 1:
         array_shift = \
@@ -170,7 +180,8 @@ def main():
         plt.figure(num='regret')
         plt.xlabel('time slot')
         plt.ylabel('cumulative regret')
-        plt.plot(np.arange(converge_time), regret_record, 'k-')
+
+        plt.plot(np.arange(terminal_time)+1, regret_record, 'k-')
         plt.show()
 
 

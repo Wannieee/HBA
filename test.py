@@ -59,17 +59,12 @@ class Node:
             # choose=1,2,3 stand for origin HBA, adjusted HBA and origin HOO
             choose = 2
             if choose == 1:
-                # there is difference between HBA and HOO
-                # origin HBA
-                self.E = self.R + np.sqrt(2 * np.power(self.sigma, 2) * np.log(t) / self.N) \
-                    + self.rho1 * np.power(self.gama, self.depth)
-            if choose == 2:
-                # adjusted HBA: the parameter sigma is divided by 60, because the sigma(dbm) is the variance of shadow
+                # HBA: the parameter sigma is divided by 60, because the sigma(dbm) is the variance of shadow
                 # fading. The RSS is mapped to [0, 1], then the sigma maybe also zoomed out the same size,
                 # which is -40+100
                 self.E = self.R + np.sqrt(2 * np.power(self.sigma / 60, 2) * np.log(t) / self.N) \
                     + self.rho1 * np.power(self.gama, self.depth)
-            if choose == 3:
+            if choose == 2:
                 # HOO: as the paper shows, the HOO algorithm set a /eta_h as 0.1, the parameter c_1 is equal to rho1
                 self.E = self.R + 0.1 * np.sqrt(2 * np.log(t) / self.N) \
                     + self.rho1 * np.power(self.gama, self.depth)

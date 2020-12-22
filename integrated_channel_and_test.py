@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 # either the result is got from a shift value matrix nor the result matrix is formed by the output of making every
 # column of the shift value matrix input. When I call the function, I usually either make array_shift a DFT codebook or
 # just a single shift value vector
-def channel_rss(array_shift, angle, d=20e-3, sf=1, sigma=2, xi=1.74, f=60e3):
+def channel_rss(array_shift, angle, sf=1, d=20e-3, sigma=2, xi=1.74, f=60e3):
     n = array_shift.shape[0]  # n antennas
     k = array_shift.shape[1]  # k beams
     p = 50 - 10 * np.log10(n)
@@ -26,7 +26,7 @@ def channel_rss(array_shift, angle, d=20e-3, sf=1, sigma=2, xi=1.74, f=60e3):
         if i == 0:
             g[i, :] = -loss - chi
         else:
-            g[i, :] = -loss - chi - 7 - 6 * np.random.rand(1, k)
+            g[i, :] = -loss - chi - (7 + 6 * np.random.rand(1, k)) * sf - 10 * (1 - sf)
     array_response = np.exp(1j * np.pi * np.dot(np.cos(angle).reshape(-1, 1), np.arange(n).reshape(1, -1)))
     array_gain = np.power(np.abs(np.dot(array_response, array_shift)), 2)
     flag = 1
