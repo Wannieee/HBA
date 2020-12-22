@@ -4,7 +4,7 @@ https://ieeexplore.ieee.org/document/8842625
 ## 1 integrated_channel_and_test.py
 ### 1.1 channel_rss
 函数channel_rss用于计算给定移相权重下的输出的RSS，包括Mean_RSS和Noisy_RSS  
-函数体中在计算RSS时可选两种计算方案，一是将多径的信号的振幅相加再求模的平方，另一种是将多径信号的先模的平方再求和  
+函数体中在计算Mean_RSS时可选两种计算方案，一是将路损g单位为倍数的情况下求平均，二是路损g单位为db的情况下求平均
 ### 1.2 main
 用于测试函数channel_rss的效果，输出在相同信道条件下，使用不同波束可以得到的增益  
 ## 2 test.py
