@@ -148,7 +148,9 @@ def main():
     k = n
     l = 3
     angle = np.pi * np.random.rand(l, 1)
+    # angle = np.array([0.5, 1, 2]).reshape(-1, 1)
     best_beam_index = np.mod(np.round(k * (1 - np.cos(angle)) / 2, 0), k).astype(np.int).T
+    print("the scale of beam code and antenna: ", n)
     print('\033[7mTheoretical optimal result\033[0m')
     print('best_beam_index: ', best_beam_index[0])
     best_array_shift = 1 / np.sqrt(n) * \
@@ -175,14 +177,54 @@ def main():
         plt.figure(num='gain')
         plt.xlabel('beam idx')
         plt.ylabel('gain')
-        plt.plot(np.arange(k), mean_rss, 'r--', np.arange(k), noisy_rss, 'k-')
+        plt.plot(np.arange(k), noisy_rss, 'k-')  # ,    np.arange(k), mean_rss, 'r--'
         plt.grid()
         plt.figure(num='regret')
         plt.xlabel('time slot')
         plt.ylabel('cumulative regret')
-
         plt.plot(np.arange(terminal_time)+1, regret_record, 'k-')
-        plt.show()
+    test_stability = 1
+    test_generalization = 0
+    repeat_time = 10
+    ts_converge_time = []
+    ts_selected_beam = []
+    ts_best_beam = []
+    ts_regret = []
+    tg_converge_time = []
+    tg_selected_beam = []
+    tg_best_beam = []
+    tg_regret = []
+    if test_stability == 1:
+        process_time = 0
+        while repeat_time != process_time:
+            process_time += 1
+            print(process_time)
+            converge_time, _, selected_beam_idx, _, _, regret_record = simulation(m, n, k, angle, method)
+            ts_converge_time.append(converge_time)
+            ts_selected_beam.append(selected_beam_idx)
+            ts_best_beam.append(best_beam_index[0][0])
+            ts_regret.append(regret_record[-1])
+    if test_generalization == 1:
+        process_time = 0
+        while repeat_time != process_time:
+            process_time += 1
+            print(process_time)
+            test_angle = np.pi * np.random.rand(l, 1)
+            best_beam_index = np.mod(np.round(k * (1 - np.cos(test_angle)) / 2, 0), k).astype(np.int).T[0][0]
+            converge_time, _, selected_beam_idx, _, _, regret_record = simulation(m, n, k, test_angle, method)
+            tg_converge_time.append(converge_time)
+            tg_selected_beam.append(selected_beam_idx)
+            tg_best_beam.append(best_beam_index)
+            tg_regret.append(regret_record[-1])
+    # 一般认为没对准时会导致最后的regret偏大，一点就是证明波束没选到最优导致regret显著偏大；另一方面regret协方差偏大也说明没最优对准
+    if test_stability == 1:
+        ts_count = [ts_selected_beam[i]-ts_best_beam[i] for i in range(repeat_time)].count(0)
+        print("test stability. accuracy:", ts_count/repeat_time)
+    if test_generalization == 1:
+        tg_count = [tg_selected_beam[i]-tg_best_beam[i] for i in range(repeat_time)].count(0)
+        print("test generalization. accuracy:", tg_count/repeat_time)
+
+    plt.show()
 
 
 if __name__ == '__main__':
