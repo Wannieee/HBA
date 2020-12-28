@@ -147,8 +147,8 @@ def main():
     n = np.power(2, m)
     k = n
     l = 3
-    angle = np.pi * np.random.rand(l, 1)
-    # angle = np.array([0.5, 1, 2]).reshape(-1, 1)
+    # angle = np.pi * np.random.rand(l, 1)
+    angle = np.array([0.5, 1, 2]).reshape(-1, 1)
     best_beam_index = np.mod(np.round(k * (1 - np.cos(angle)) / 2, 0), k).astype(np.int).T
     print("the scale of beam code and antenna: ", n)
     print('\033[7mTheoretical optimal result\033[0m')
@@ -177,7 +177,7 @@ def main():
         plt.figure(num='gain')
         plt.xlabel('beam idx')
         plt.ylabel('gain')
-        plt.plot(np.arange(k), noisy_rss, 'k-')  # ,    np.arange(k), mean_rss, 'r--'
+        plt.plot(np.arange(k), mean_rss, 'r--', np.arange(k), noisy_rss, 'k-')
         plt.grid()
         plt.figure(num='regret')
         plt.xlabel('time slot')
