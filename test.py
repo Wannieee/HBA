@@ -57,7 +57,7 @@ class Node:
             self.E = np.inf
         else:
             # choose=1,2,3 stand for origin HBA, adjusted HBA and origin HOO
-            choose = 2
+            choose = 1
             if choose == 1:
                 # HBA: the parameter sigma is divided by 60, because the sigma(dbm) is the variance of shadow
                 # fading. The RSS is mapped to [0, 1], then the sigma maybe also zoomed out the same size,
