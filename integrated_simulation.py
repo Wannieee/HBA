@@ -147,8 +147,8 @@ def main():
     n = np.power(2, m)
     k = n
     l = 3
-    # angle = np.pi * np.random.rand(l, 1)
-    angle = np.array([0.5, 1, 2]).reshape(-1, 1)
+    angle = np.pi * np.random.rand(l, 1)
+    # angle = np.array([0.5, 1, 2]).reshape(-1, 1)
     best_beam_index = np.mod(np.round(k * (1 - np.cos(angle)) / 2, 0), k).astype(np.int).T
     print("the scale of beam code and antenna: ", n)
     print('\033[7mTheoretical optimal result\033[0m')
@@ -183,9 +183,9 @@ def main():
         plt.xlabel('time slot')
         plt.ylabel('cumulative regret')
         plt.plot(np.arange(terminal_time)+1, regret_record, 'k-')
-    test_stability = 1
+    test_stability = 0
     test_generalization = 0
-    repeat_time = 10
+    repeat_time = 20
     ts_converge_time = []
     ts_selected_beam = []
     ts_best_beam = []
