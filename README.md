@@ -52,3 +52,7 @@ test_stability设为1测试稳定性，采用同一个angle进行测试
 test_generalization设为1测试泛化性，每次采用随机angle进行测试
 对于稳定性，测试发现收敛到LOS的概率随角度变化不稳定
 对于泛化性，测试发现要收敛到LOS的概率在70%左右
+## 4 origin_version
+将前面3个代码的内容放在了一起
+## 5 improve_version
+在origin_version基础上做后续改进
