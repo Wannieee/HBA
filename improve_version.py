@@ -277,7 +277,6 @@ def simulation(m, n, k, angle, cb_method, ba_method):
                 converge_time += 1
             exhausted_rss = np.append(exhausted_rss, new_rss)
         print(exhausted_rss)
-        # selected_beam_idx = beam_idx[exhausted_rss.tolist().index(max(exhausted_rss))]
         selected_beam_idx = beam_idx[exhausted_rss.argmax()]
         # print('select', selected_beam_idx)
         # print('-------------')
