@@ -1,9 +1,13 @@
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
 # Main function of test.py is too big to integrate. In simulation function, when method=1, HBA algorithm is used
+upper_limit = -40
+lower_limit = -100
 
 
 def node_to_beam_idx(m, p):
+    # m为数目的2次方阶数，p为常规列表
     # m is the binary number of beam. For example, beams = 128, m = log2(128) = 7.
     # p is the list of tree p recorded in every iteration
     # Obviously, when len(p) should is more than m, the output is too rough to distinguish
@@ -18,16 +22,51 @@ def node_to_beam_idx(m, p):
 
 
 def beam_gain_map(gain):
+    # 输入什么格式就输出什么格式
     # the limit set is flexible
     # I think that the rss isn't able to be more than -40dbm, and the lower limit may be set as -90 or -100 in this code
-    upper_limit = -40
-    lower_limit = -100
     r = (gain - lower_limit) / (upper_limit - lower_limit)
     if r < 0:
         r = 0
     if r > 1:
         r = 1
     return r
+
+
+def code(n, k, number):
+    # DFT码本，返回一个n*k维的波束赋形向量构成的矩阵
+    if number == 1:
+        array_shift = \
+            1 / np.sqrt(n) * \
+            np.exp(1j * np.pi * np.dot(np.arange(n).reshape(-1, 1), 2 * np.arange(k).reshape(1, -1) / k - 1))
+        pass
+    else:
+        print('\033[31m生成波束码本时未指定正确编号\033[0m')
+        sys.exit(0)
+    return array_shift
+
+
+def angle_to_beam(k, angle, number):  # 通常方向与波束编号有直接关系->采用唯一一个特定编号可以在指定方向产生最大波束
+    angle = np.array(angle).reshape(1, -1)
+    # DFT码本
+    if number == 1:
+        beam_index = np.mod(np.round(k * (1 - np.cos(angle)) / 2, 0), k).astype(np.int)[0]
+    else:
+        print('\033[31m未指定波束码本\033[0m')
+        sys.exit(0)
+    return beam_index
+
+
+def beam_to_angle(k, beam, number):
+    beam = np.array(beam).reshape(1, -1)
+    # DFT码本
+    if number == 1:
+        angle = np.arccos(1-2*beam/k)[0]  # 实际上对于线阵，在angle和2*pi-angle上的波束响应是一样的
+        pass
+    else:
+        print('\033[31m未指定波束码本\033[0m')
+        sys.exit(0)
+    return angle
 
 
 class Node:
@@ -62,7 +101,7 @@ class Node:
                 # HBA: the parameter sigma is divided by 60, because the sigma(dbm) is the variance of shadow
                 # fading. The RSS is mapped to [0, 1], then the sigma maybe also zoomed out the same size,
                 # which is -40+100
-                self.E = self.R + np.sqrt(2 * np.power(self.sigma / 60, 2) * np.log(t) / self.N) \
+                self.E = self.R + np.sqrt(2 * np.power(self.sigma / (upper_limit - lower_limit), 2) * np.log(t)/self.N)\
                     + self.rho1 * np.power(self.gama, self.depth)
             if choose == 2:
                 # HOO: as the paper shows, the HOO algorithm set a /eta_h as 0.1, the parameter c_1 is equal to rho1
@@ -94,6 +133,10 @@ class Node:
 
 
 def channel_rss(array_shift, angle, sf=1, d=20e-3, sigma=2, xi=1.74, f=60e3):
+    # 输入的array_shift为列向量的组合，如果单独输入dim为1的列向量则将其改为dim为2的列向量
+    array_shift = np.array(array_shift)
+    if array_shift.ndim == 1:
+        array_shift = array_shift.reshape(-1, 1)
     n = array_shift.shape[0]  # n antennas
     k = array_shift.shape[1]  # k beams
     p = 50 - 10 * np.log10(n)
@@ -115,19 +158,19 @@ def channel_rss(array_shift, angle, sf=1, d=20e-3, sigma=2, xi=1.74, f=60e3):
     if flag == 1:
         noisy_rss = 20 * np.log10((np.multiply(np.sqrt(np.power(10, g / 10)), np.sqrt(array_gain))).sum(axis=0)) + p
         g = np.dot(10 * np.log10((np.power(10, g / 10)).mean(axis=1).reshape(-1, 1)), np.ones((1, k)))
-        # g = np.dot(g.mean(axis=1).reshape(-1, 1), np.ones((1, k), dtype=np.float)) #两者差别是一个是对dB做平均一个是对倍数做平均
+        # g = np.dot(g.mean(axis=1).reshape(-1, 1), np.ones((1, k), dtype=np.float))
         mean_rss = 20 * np.log10((np.multiply(np.sqrt(np.power(10, g / 10)), np.sqrt(array_gain))).sum(axis=0)) + p
     else:
         noisy_rss = 10 * np.log10((np.multiply(np.power(10, g / 10), array_gain)).sum(axis=0)) + p
         g = np.dot(10 * np.log10((np.power(10, g / 10)).mean(axis=1).reshape(-1, 1)), np.ones((1, k)))
-        # g = np.dot(g.mean(axis=1).reshape(-1, 1), np.ones((1, k), dtype=np.float)) #两者差别是一个是对dB做平均一个是对倍数做平均
+        # g = np.dot(g.mean(axis=1).reshape(-1, 1), np.ones((1, k), dtype=np.float)) #两者差别是前者对dB做平均，后者对倍数做平均
         mean_rss = 10 * np.log10((np.multiply(np.power(10, g / 10), array_gain)).sum(axis=0)) + p
     return noisy_rss, mean_rss
 
 
-def simulation(m, n, k, angle, method):
+def simulation(m, n, k, array_shift, angle, cb_method, ba_method):
     # Terminal and converge time is used to describe the performance of different algorithm
-    if method == 1:
+    if ba_method == 1:
         # For HBA method, n=k=2^m.
         measured_beam = []
         measured_rss = []
@@ -136,9 +179,8 @@ def simulation(m, n, k, angle, method):
         terminal_time = 1000
         converge_time = 0
         p = []
-        best_beam_index = np.mod(np.round(k * (1 - np.cos(angle)) / 2, 0), k).astype(np.int).T[0][0]
-        best_array_shift = 1 / np.sqrt(n) * \
-            np.exp(1j * np.pi * (2 * best_beam_index / k - 1) * np.arange(n).reshape(-1, 1))
+        best_beam_index = angle_to_beam(k, angle, cb_method)[0]
+        best_array_shift = array_shift[:, best_beam_index]
         _, optimal_rss = channel_rss(best_array_shift, angle, 0)
         optimal_reward = beam_gain_map(optimal_rss)
         head_node = Node(0)
@@ -194,9 +236,8 @@ def simulation(m, n, k, angle, method):
             # then attributes update
             _, beam_medium_idx, _ = node_to_beam_idx(m, p)
             beam_measured_idx = beam_medium_idx
-            array_shift = 1 / np.sqrt(n) * np.exp(
-                1j * np.pi * (2 * beam_measured_idx / k - 1) * np.arange(n).reshape(-1, 1))
-            noisy_rss, _ = channel_rss(array_shift, angle)
+            test_array_shift = array_shift[:, beam_measured_idx]
+            noisy_rss, _ = channel_rss(test_array_shift, angle)
             measured_beam.append(beam_measured_idx)
             # print(beam_measured_idx)
             measured_rss = np.append(measured_rss, noisy_rss)
@@ -267,19 +308,20 @@ def main():
     n = np.power(2, m)
     k = n
     l = 3
+    cb_method = 1  # codebook method，等于1表示采用DFT码本
+    ba_method = 1  # beam alignment method，等于1表示采用HBA
+    array_shift = code(n, k, cb_method)
     angle = np.pi * np.random.rand(l, 1)
     # angle = np.array([0.5, 1, 2]).reshape(-1, 1)
-    best_beam_index = np.mod(np.round(k * (1 - np.cos(angle)) / 2, 0), k).astype(np.int).T
+    best_beam_index = angle_to_beam(k, angle, cb_method)
     print("the scale of beam code and antenna: ", n)
     print('\033[7mTheoretical optimal result\033[0m')
-    print('best_beam_index: ', best_beam_index[0])
-    best_array_shift = 1 / np.sqrt(n) * \
-        np.exp(1j * np.pi * (2 * best_beam_index / k - 1) * np.arange(n).reshape(-1, 1))
+    print('best_beam_index: ', best_beam_index)
+    best_array_shift = array_shift[:, best_beam_index]
     _, optimal_rss = channel_rss(best_array_shift, angle)
     print('best_beam_rss', optimal_rss)
-    method = 1
     converge_time, terminal_time, selected_beam_idx, measured_beam, measured_rss, regret_record \
-        = simulation(m, n, k, angle, method)
+        = simulation(m, n, k, array_shift, angle, cb_method, ba_method)
     print('\033[7mThe result of HBA:\033[0m')
     print('selected beam: ', selected_beam_idx)
     print('terminal time:', terminal_time)
@@ -290,9 +332,6 @@ def main():
     print(len(regret_record))
     test = 1
     if test == 1:
-        array_shift = \
-            1 / np.sqrt(n) * \
-            np.exp(1j * np.pi * np.dot(np.arange(n).reshape(-1, 1), 2 * np.arange(k).reshape(1, -1) / k - 1))
         noisy_rss, mean_rss = channel_rss(array_shift, angle)
         plt.figure(num='gain')
         plt.xlabel('beam idx')
@@ -303,9 +342,10 @@ def main():
         plt.xlabel('time slot')
         plt.ylabel('cumulative regret')
         plt.plot(np.arange(terminal_time)+1, regret_record, 'k-')
+
     test_stability = 0
     test_generalization = 0
-    repeat_time = 20
+    repeat_time = 100
     ts_converge_time = []
     ts_selected_beam = []
     ts_best_beam = []
@@ -319,7 +359,8 @@ def main():
         while repeat_time != process_time:
             process_time += 1
             print(process_time)
-            converge_time, _, selected_beam_idx, _, _, regret_record = simulation(m, n, k, angle, method)
+            converge_time, _, selected_beam_idx, _, _, regret_record \
+                = simulation(m, n, k, array_shift, angle, cb_method, ba_method)
             ts_converge_time.append(converge_time)
             ts_selected_beam.append(selected_beam_idx)
             ts_best_beam.append(best_beam_index[0][0])
@@ -330,8 +371,10 @@ def main():
             process_time += 1
             print(process_time)
             test_angle = np.pi * np.random.rand(l, 1)
-            best_beam_index = np.mod(np.round(k * (1 - np.cos(test_angle)) / 2, 0), k).astype(np.int).T[0][0]
-            converge_time, _, selected_beam_idx, _, _, regret_record = simulation(m, n, k, test_angle, method)
+            best_beam_index = angle_to_beam(k, test_angle, cb_method)[0]
+            print(best_beam_index)
+            converge_time, _, selected_beam_idx, _, _, regret_record\
+                = simulation(m, n, k, array_shift, test_angle, cb_method, ba_method)
             tg_converge_time.append(converge_time)
             tg_selected_beam.append(selected_beam_idx)
             tg_best_beam.append(best_beam_index)
@@ -343,7 +386,6 @@ def main():
     if test_generalization == 1:
         tg_count = [tg_selected_beam[i]-tg_best_beam[i] for i in range(repeat_time)].count(0)
         print("test generalization. accuracy:", tg_count/repeat_time)
-
     plt.show()
 
 
