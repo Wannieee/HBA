@@ -304,7 +304,7 @@ def simulation(m, n, k, angle, cb_method, ba_method):
 
 
 def main():
-    m = 9
+    m = 7
     n = np.power(2, m)
     k = n
     l = 3
