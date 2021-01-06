@@ -56,3 +56,5 @@ test_generalization设为1测试泛化性，每次采用随机angle进行测试
 将前面3个代码的内容放在了一起
 ## 5 improve_version
 在origin_version基础上做后续改进
+已有的改进：
+1、可以重新自定义波束码本
