@@ -154,7 +154,7 @@ def channel_rss(array_shift, angle, sf=1, d=20e-3, sigma=2, xi=1.74, f=60e3):
             g[i, :] = -loss - chi - (7 + 6 * np.random.rand(1, k)) * sf - 10 * (1 - sf)
     array_response = np.exp(1j * np.pi * np.dot(np.cos(angle).reshape(-1, 1), np.arange(n).reshape(1, -1)))
     array_gain = np.power(np.abs(np.dot(array_response, array_shift)), 2)
-    flag = 1
+    flag = 2
     if flag == 1:
         noisy_rss = 20 * np.log10((np.multiply(np.sqrt(np.power(10, g / 10)), np.sqrt(array_gain))).sum(axis=0)) + p
         g = np.dot(10 * np.log10((np.power(10, g / 10)).mean(axis=1).reshape(-1, 1)), np.ones((1, k)))
@@ -168,7 +168,8 @@ def channel_rss(array_shift, angle, sf=1, d=20e-3, sigma=2, xi=1.74, f=60e3):
     return noisy_rss, mean_rss
 
 
-def simulation(m, n, k, array_shift, angle, cb_method, ba_method):
+def simulation(m, n, k, angle, cb_method, ba_method):
+    array_shift = code(n, k, cb_method)
     # Terminal and converge time is used to describe the performance of different algorithm
     if ba_method == 1:
         # For HBA method, n=k=2^m.
@@ -268,9 +269,8 @@ def simulation(m, n, k, array_shift, angle, cb_method, ba_method):
             if beam_idx[i] in measured_beam:
                 new_rss = measured_rss[measured_beam.index(beam_idx[i])]
             else:
-                array_shift = 1 / np.sqrt(n) * np.exp(
-                    1j * np.pi * (2 * beam_idx[i] / k - 1) * np.arange(n).reshape(-1, 1))
-                new_rss, _ = channel_rss(array_shift, angle)
+                measured_array_shift = array_shift[:, beam_idx[i]]
+                new_rss, _ = channel_rss(measured_array_shift, angle)
                 measured_beam.append(beam_idx[i])
                 # print('append', beam_idx[i])
                 measured_rss = np.append(measured_rss, new_rss)
@@ -280,11 +280,10 @@ def simulation(m, n, k, array_shift, angle, cb_method, ba_method):
         # print('select', selected_beam_idx)
         # print('-------------')
         # calculate the cumulative regret
-        array_shift = 1 / np.sqrt(n) * np.exp(
-            1j * np.pi * (2 * selected_beam_idx / k - 1) * np.arange(n).reshape(-1, 1))
+        selected_array_shift = array_shift[:, selected_beam_idx]
         if converge_time < terminal_time:
             for t in range(converge_time, terminal_time):
-                new_rss, _ = channel_rss(array_shift, angle)
+                new_rss, _ = channel_rss(selected_array_shift, angle)
                 measured_beam.append(selected_beam_idx)
                 measured_rss = np.append(measured_rss, new_rss)
         length = len(measured_rss)
@@ -304,7 +303,7 @@ def simulation(m, n, k, array_shift, angle, cb_method, ba_method):
 
 
 def main():
-    m = 7
+    m = 9
     n = np.power(2, m)
     k = n
     l = 3
@@ -321,7 +320,7 @@ def main():
     _, optimal_rss = channel_rss(best_array_shift, angle)
     print('best_beam_rss', optimal_rss)
     converge_time, terminal_time, selected_beam_idx, measured_beam, measured_rss, regret_record \
-        = simulation(m, n, k, array_shift, angle, cb_method, ba_method)
+        = simulation(m, n, k, angle, cb_method, ba_method)
     print('\033[7mThe result of HBA:\033[0m')
     print('selected beam: ', selected_beam_idx)
     print('terminal time:', terminal_time)
@@ -345,7 +344,7 @@ def main():
 
     test_stability = 0
     test_generalization = 0
-    repeat_time = 100
+    repeat_time = 20
     ts_converge_time = []
     ts_selected_beam = []
     ts_best_beam = []
@@ -360,7 +359,7 @@ def main():
             process_time += 1
             print(process_time)
             converge_time, _, selected_beam_idx, _, _, regret_record \
-                = simulation(m, n, k, array_shift, angle, cb_method, ba_method)
+                = simulation(m, n, k, angle, cb_method, ba_method)
             ts_converge_time.append(converge_time)
             ts_selected_beam.append(selected_beam_idx)
             ts_best_beam.append(best_beam_index[0][0])
@@ -372,9 +371,8 @@ def main():
             print(process_time)
             test_angle = np.pi * np.random.rand(l, 1)
             best_beam_index = angle_to_beam(k, test_angle, cb_method)[0]
-            print(best_beam_index)
             converge_time, _, selected_beam_idx, _, _, regret_record\
-                = simulation(m, n, k, array_shift, test_angle, cb_method, ba_method)
+                = simulation(m, n, k, test_angle, cb_method, ba_method)
             tg_converge_time.append(converge_time)
             tg_selected_beam.append(selected_beam_idx)
             tg_best_beam.append(best_beam_index)
